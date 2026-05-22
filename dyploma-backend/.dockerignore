@@ -1,0 +1,6 @@
+# File: dyploma/dyploma-backend/.dockerignore
+.git
+.env
+node_modules
+dist
+npm-debug.log
