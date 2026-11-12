@@ -57,6 +57,10 @@ All three services are containerised and orchestrated with Docker Compose. CI bu
 - **Notifications** — real-time in-app notification centre
 - **Authentication** — JWT-based auth with role-based access (admin / volunteer)
 
+<img src=".github/live.gif" alt="Movement simulation: a volunteer's position streams over Socket.IO along the mission route until the 'Mission complete' notification" width="100%">
+
+<sub>Movement simulation, recorded in real time: the server streams the volunteer's position over Socket.IO (<code>locationUpdate</code>) and fires a completion event when the mission ends.</sub>
+
 ---
 
 ## Quick Start
