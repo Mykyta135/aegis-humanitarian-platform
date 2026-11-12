@@ -1,12 +1,38 @@
-<img src=".github/cover.png" alt="aegis-humanitarian-platform" width="100%">
+<img src=".github/cover.png" alt="Aegis: humanitarian operations platform with a live volunteer map, route planning and role-based access" width="100%">
 
 # Aegis Humanitarian Platform
 
-A full-stack web application for coordinating humanitarian aid missions — managing volunteers, resources, and field operations in real time.
+[![CI](https://github.com/Mykyta135/aegis-humanitarian-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/Mykyta135/aegis-humanitarian-platform/actions/workflows/ci.yml)
+
+A full-stack web application for coordinating humanitarian aid missions — managing volunteers, resources, and field operations in real time. My Bachelor's thesis at Lviv Polytechnic.
 
 ---
 
 ## Architecture
+
+```mermaid
+flowchart LR
+    subgraph web["frontend · Next.js 16 :3001"]
+        MAP[Live operations map<br/>Leaflet]
+        WIZ[Mission wizard]
+        DASH[Analytics dashboard]
+    end
+    subgraph api["backend · NestJS 11 + TypeORM :3000"]
+        AUTH[auth · JWT + roles]
+        OPS[operations gateway]
+        CHAT[chat gateway]
+        MOD[tasks · resources · threat zones<br/>volunteer & resource requests]
+        ROUTE[routing]
+        SUG[suggestions]
+    end
+    DB[(PostgreSQL 14)]
+    ORS[OpenRouteService]
+    MAP <-- "Socket.IO: locationUpdate, notification" --> OPS
+    web <-- "Socket.IO: chat" --> CHAT
+    web -- REST --> AUTH & MOD & ROUTE & SUG
+    ROUTE --> ORS
+    api --> DB
+```
 
 | Layer | Technology | Port |
 |-------|-----------|------|
@@ -14,7 +40,7 @@ A full-stack web application for coordinating humanitarian aid missions — mana
 | Backend | NestJS 11 + TypeORM | 3000 |
 | Database | PostgreSQL 14 | 5432 |
 
-All three services are containerised and orchestrated with Docker Compose.
+All three services are containerised and orchestrated with Docker Compose. CI builds and tests the backend and builds the frontend (with its typecheck) on every push.
 
 ---
 
