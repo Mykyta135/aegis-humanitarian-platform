@@ -28,6 +28,7 @@ import { HighlightedMarker } from "./HighlightedMarker";
 import { ThreatZonesLayer } from "./ThreatZonesLayer";
 import { InfrastructureLayer } from "./InfrastructureLayer";
 import { WeatherPrecipitationLayer } from "./WeatherLayer";
+import { hasMapTiler, streetTiles } from "@/lib/tiles";
 import {
   missionEndIcon,
   missionStartIcons,
@@ -722,25 +723,27 @@ export function OperationsMap({
         {/* ── Base tile layers ── */}
         <LayersControl position="topright">
           <LayersControl.BaseLayer checked name="Streets">
-            <TileLayer
-              attribution='&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url={`https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${process.env.NEXT_PUBLIC_MAPTILER_API_KEY}`}
-            />
+            <TileLayer attribution={streetTiles.attribution} url={streetTiles.url} />
           </LayersControl.BaseLayer>
 
-          <LayersControl.BaseLayer name="Satellite">
-            <TileLayer
-              attribution='&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a>'
-              url={`https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=${process.env.NEXT_PUBLIC_MAPTILER_API_KEY}`}
-            />
-          </LayersControl.BaseLayer>
+          {/* MapTiler-only layers appear when NEXT_PUBLIC_MAPTILER_API_KEY is set */}
+          {hasMapTiler && (
+            <LayersControl.BaseLayer name="Satellite">
+              <TileLayer
+                attribution='&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a>'
+                url={`https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=${process.env.NEXT_PUBLIC_MAPTILER_API_KEY}`}
+              />
+            </LayersControl.BaseLayer>
+          )}
 
-          <LayersControl.BaseLayer name="Terrain">
-            <TileLayer
-              attribution='&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a>'
-              url={`https://api.maptiler.com/maps/outdoor-v2/{z}/{x}/{y}.png?key=${process.env.NEXT_PUBLIC_MAPTILER_API_KEY}`}
-            />
-          </LayersControl.BaseLayer>
+          {hasMapTiler && (
+            <LayersControl.BaseLayer name="Terrain">
+              <TileLayer
+                attribution='&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a>'
+                url={`https://api.maptiler.com/maps/outdoor-v2/{z}/{x}/{y}.png?key=${process.env.NEXT_PUBLIC_MAPTILER_API_KEY}`}
+              />
+            </LayersControl.BaseLayer>
+          )}
 
           <LayersControl.BaseLayer name="Topo">
             <TileLayer
@@ -749,12 +752,14 @@ export function OperationsMap({
             />
           </LayersControl.BaseLayer>
 
-          <LayersControl.BaseLayer name="Dark">
-            <TileLayer
-              attribution='&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a>'
-              url={`https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=${process.env.NEXT_PUBLIC_MAPTILER_API_KEY}`}
-            />
-          </LayersControl.BaseLayer>
+          {hasMapTiler && (
+            <LayersControl.BaseLayer name="Dark">
+              <TileLayer
+                attribution='&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a>'
+                url={`https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=${process.env.NEXT_PUBLIC_MAPTILER_API_KEY}`}
+              />
+            </LayersControl.BaseLayer>
+          )}
 
           {/* ── Overlay layers ── */}
           <LayersControl.Overlay checked name="🗺 Active Mission Routes">

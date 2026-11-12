@@ -6,6 +6,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef } from "react";
 import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from "react-leaflet";
+import { streetTiles } from "@/lib/tiles";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -171,10 +172,7 @@ export function MissionMap({ taskId, startLocation, endLocation, center, volunte
       scrollWheelZoom={true}
       style={{ height: "100%", width: "100%" }}
     >
-      <TileLayer
-        attribution='&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url={`https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${process.env.NEXT_PUBLIC_MAPTILER_API_KEY}`}
-      />
+      <TileLayer attribution={streetTiles.attribution} url={streetTiles.url} />
 
       {/* Leg 1: volunteer home → mission start */}
       {volunteerHomeBase && startLocation && (

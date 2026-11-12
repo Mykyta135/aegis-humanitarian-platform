@@ -6,6 +6,8 @@
 
 A full-stack web application for coordinating humanitarian aid missions — managing volunteers, resources, and field operations in real time. My Bachelor's thesis at Lviv Polytechnic.
 
+<img src=".github/map.png" alt="Global Operations Map: 100 volunteers, 40 resources and 150 missions from the demo seed on a live map, with the movement simulation panel" width="100%">
+
 ---
 
 ## Architecture
@@ -171,4 +173,4 @@ NEXT_PUBLIC_API_URL=http://localhost:3000 npm run dev
 | Variable | Description |
 |----------|-------------|
 | `NEXT_PUBLIC_API_URL` | Backend base URL |
-| `NEXT_PUBLIC_MAPTILER_API_KEY` | MapTiler API key for map tiles |
+| `NEXT_PUBLIC_MAPTILER_API_KEY` | Optional. MapTiler key for the satellite, terrain and dark layers; without it the map uses OpenStreetMap tiles |
