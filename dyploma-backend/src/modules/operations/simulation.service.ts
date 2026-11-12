@@ -41,7 +41,10 @@ export class SimulationService {
     private readonly gateway: OperationsGateway,
   ) {}
 
-  async startSimulation(taskId: string, speedMultiplier = 1): Promise<{ message: string }> {
+  async startSimulation(
+    taskId: string,
+    speedMultiplier = 1,
+  ): Promise<{ message: string }> {
     if (this.simulations.has(taskId)) {
       return { message: 'Simulation already running for this task' };
     }
@@ -56,8 +59,7 @@ export class SimulationService {
       throw new Error('Task must be in_progress to simulate');
     if (!task.startLocation || !task.endLocation)
       throw new Error('Task has no route coordinates');
-    if (!task.assignee)
-      throw new Error('Task has no assigned volunteer');
+    if (!task.assignee) throw new Error('Task has no assigned volunteer');
 
     const routeResult = await this.routingService.getRoute(
       task.startLocation,
@@ -77,7 +79,8 @@ export class SimulationService {
       }
     }
 
-    if (points.length === 0) throw new Error('Could not build route for simulation');
+    if (points.length === 0)
+      throw new Error('Could not build route for simulation');
 
     const state: SimulationState = {
       taskId,
@@ -92,14 +95,14 @@ export class SimulationService {
     const intervalMs = tickIntervalMs(speedMultiplier);
 
     state.intervalRef = setInterval(() => {
-      this.tick(taskId);
+      this.safeTick(taskId);
     }, intervalMs);
 
     this.simulations.set(taskId, state);
 
     this.logger.log(
       `▶ Simulation started: task=${taskId} volunteer=${task.assignee.name} ` +
-      `points=${points.length} speed=${speedMultiplier}× interval=${intervalMs}ms`,
+        `points=${points.length} speed=${speedMultiplier}× interval=${intervalMs}ms`,
     );
 
     return { message: `Simulation started for "${task.assignee.name}"` };
@@ -135,7 +138,9 @@ export class SimulationService {
       taskId: s.taskId,
       volunteerId: s.volunteerId,
       volunteerName: s.volunteerName,
-      progress: Math.round((s.currentIndex / Math.max(s.points.length - 1, 1)) * 100),
+      progress: Math.round(
+        (s.currentIndex / Math.max(s.points.length - 1, 1)) * 100,
+      ),
       speed: s.speedMultiplier,
       totalPoints: s.points.length,
       currentIndex: s.currentIndex,
@@ -147,7 +152,9 @@ export class SimulationService {
     const state = this.simulations.get(taskId);
     if (!state) return { message: 'No simulation running for this task' };
     const clamped = Math.max(0, Math.min(100, percent));
-    state.currentIndex = Math.round((clamped / 100) * (state.points.length - 1));
+    state.currentIndex = Math.round(
+      (clamped / 100) * (state.points.length - 1),
+    );
     return { message: `Seeked to ${clamped}%` };
   }
 
@@ -161,18 +168,38 @@ export class SimulationService {
     const intervalMs = tickIntervalMs(speedMultiplier);
 
     state.intervalRef = setInterval(() => {
-      this.tick(taskId);
+      this.safeTick(taskId);
     }, intervalMs);
 
-    this.logger.log(`⚡ Speed changed: task=${taskId} speed=${speedMultiplier}× interval=${intervalMs}ms`);
+    this.logger.log(
+      `⚡ Speed changed: task=${taskId} speed=${speedMultiplier}× interval=${intervalMs}ms`,
+    );
     return { message: `Speed set to ${speedMultiplier}×` };
+  }
+
+  /** Runs inside setInterval: an exception here would crash the whole process. */
+  private safeTick(taskId: string): void {
+    try {
+      this.tick(taskId);
+    } catch (err) {
+      this.logger.error(
+        `Simulation tick failed, stopping task=${taskId}`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      this.stopSimulation(taskId);
+    }
   }
 
   private tick(taskId: string): void {
     const state = this.simulations.get(taskId);
     if (!state) return;
 
-    const [lat, lng] = state.points[state.currentIndex];
+    const point = state.points[state.currentIndex];
+    if (!point)
+      throw new Error(
+        `index ${state.currentIndex} outside route of ${state.points.length} points`,
+      );
+    const [lat, lng] = point;
     this.gateway.sendLocationUpdate({
       userId: state.volunteerId,
       location: { lat, lng },

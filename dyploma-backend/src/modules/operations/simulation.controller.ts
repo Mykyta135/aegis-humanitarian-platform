@@ -10,19 +10,36 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { IsNumber, IsOptional, Max, Min } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SimulationService } from './simulation.service';
 
-class StartSimDto {
+// The global ValidationPipe runs with whitelist: true, so every field needs a
+// class-validator decorator; an undecorated field is silently stripped.
+// Bounds match the speed slider in SimulationPanel (1–50).
+export const MIN_SPEED = 1;
+export const MAX_SPEED = 50;
+
+export class StartSimDto {
+  @IsOptional()
+  @IsNumber()
+  @Min(MIN_SPEED)
+  @Max(MAX_SPEED)
   speedMultiplier?: number;
 }
 
-class SetSpeedDto {
+export class SetSpeedDto {
+  @IsNumber()
+  @Min(MIN_SPEED)
+  @Max(MAX_SPEED)
   speedMultiplier: number;
 }
 
-class SeekDto {
-  percent: number; // 0–100
+export class SeekDto {
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  percent: number;
 }
 
 @ApiTags('Simulation')
@@ -43,7 +60,10 @@ export class SimulationController {
     @Param('taskId', ParseUUIDPipe) taskId: string,
     @Body() dto: StartSimDto,
   ) {
-    return this.simulationService.startSimulation(taskId, dto.speedMultiplier ?? 5);
+    return this.simulationService.startSimulation(
+      taskId,
+      dto.speedMultiplier ?? 5,
+    );
   }
 
   @Patch(':taskId/speed')
@@ -57,10 +77,7 @@ export class SimulationController {
 
   @Patch(':taskId/seek')
   @ApiOperation({ summary: 'Seek simulation to a percentage (0–100)' })
-  seek(
-    @Param('taskId', ParseUUIDPipe) taskId: string,
-    @Body() dto: SeekDto,
-  ) {
+  seek(@Param('taskId', ParseUUIDPipe) taskId: string, @Body() dto: SeekDto) {
     return this.simulationService.seekSimulation(taskId, dto.percent);
   }
 
