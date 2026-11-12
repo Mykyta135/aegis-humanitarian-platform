@@ -1,3 +1,5 @@
+<img src=".github/cover.png" alt="aegis-humanitarian-platform" width="100%">
+
 # Aegis Humanitarian Platform
 
 A full-stack web application for coordinating humanitarian aid missions — managing volunteers, resources, and field operations in real time.
