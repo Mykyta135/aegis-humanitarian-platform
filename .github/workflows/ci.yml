@@ -19,6 +19,24 @@ jobs:
     defaults:
       run:
         working-directory: dyploma-backend
+    # Same major version as docker-compose.yml, so migrations are tested on the real engine.
+    services:
+      postgres:
+        image: postgres:14-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: aegis_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci -d aegis_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USERNAME: ci
+      DB_PASSWORD: ci
+      DB_DATABASE: aegis_ci
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -29,6 +47,10 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      # Apply every migration to an empty database, then fail if the entities
+      # describe a schema the migrations don't produce.
+      - run: npm run migration:run
+      - run: npm run migration:check
 
   frontend:
     runs-on: ubuntu-latest

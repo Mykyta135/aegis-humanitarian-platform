@@ -1,5 +1,6 @@
 // backend/src/app.module.ts
 
+import { join } from 'path';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -33,7 +34,11 @@ import { UsersModule } from './modules/users/users.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true, // Автоматично завантажувати всі Entities
-        synchronize: true, // В режимі розробки: автоматично створює/оновлює таблиці в БД
+        // Schema changes go through migrations only (src/database/migrations);
+        // pending ones run on start, so `docker compose up` still just works.
+        synchronize: false,
+        migrations: [join(__dirname, 'database', 'migrations', '*.{ts,js}')],
+        migrationsRun: true,
       }),
     }),
     UsersModule,

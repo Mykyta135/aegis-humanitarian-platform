@@ -156,6 +156,14 @@ cp .env.example .env
 npm run start:dev
 ```
 
+The schema is managed by TypeORM migrations in `dyploma-backend/src/database/migrations` (no `synchronize`); pending migrations run when the API starts. After changing an entity:
+
+```bash
+npm run migration:generate -- src/database/migrations/<Name>   # writes a new migration
+npm run migration:run                                          # applies it
+npm run migration:check                                        # fails if entities and migrations disagree (also in CI)
+```
+
 ### Frontend
 
 ```bash
