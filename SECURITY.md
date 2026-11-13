@@ -16,7 +16,7 @@ Before linking this repository from my CV I reviewed it the way a hiring enginee
 | Missions, resources, simulation | Any logged-in user could edit any mission, delete resources and drive the simulation | Creator/admin edit missions; resources and simulation are admin-only; logs and chat history only for mission participants |
 | Requests | `requesterId` was taken from the request body | Taken from the token |
 | Schema | `synchronize: true`, no migrations | TypeORM migrations, run on start; CI applies them to Postgres 14 and fails on schema drift |
-| Git history | A hard-coded OpenRouteService API key (already rotated) | Removed from every commit; history rewritten |
+| Git history | A hard-coded OpenRouteService API key | Rotated first, then removed from the branch history (rewritten). GitHub can still serve the old commits by their SHA until it garbage-collects them; the key in them no longer works |
 
 Smoke test on a fresh database (migrations applied on start): volunteer → `GET /users` 403, other volunteer's profile 403, `PATCH` own role 403, other volunteer's location 403, anonymous location 401, resource delete 403, simulation 403; own profile 200, own location 201.
 
