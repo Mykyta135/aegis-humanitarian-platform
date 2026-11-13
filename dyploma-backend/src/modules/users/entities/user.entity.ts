@@ -1,6 +1,7 @@
 import * as bcrypt from 'bcrypt';
 import {
   BeforeInsert,
+  BeforeUpdate,
   Column,
   Entity,
   OneToMany,
@@ -82,10 +83,16 @@ export class User {
   @OneToMany(() => Task, (task) => task.assignee)
   tasks: Task[];
 
+  // Also on update: a password changed through PATCH must not be stored in plain text.
+  // The column is select:false, so on update it is only set when the caller sends a new one;
+  // an existing bcrypt hash is never hashed twice.
   @BeforeInsert()
+  @BeforeUpdate()
   async hashPassword() {
     if (!this.password) {
-      this.logger.warn(`[UserEntity] No password provided for user: ${this.email}`);
+      return;
+    }
+    if (/^\$2[aby]\$\d{2}\$/.test(this.password)) {
       return;
     }
     this.logger.log(`[UserEntity] Hashing password for user: ${this.email}`);

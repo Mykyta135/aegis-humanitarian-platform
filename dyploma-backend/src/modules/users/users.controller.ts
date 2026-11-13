@@ -8,6 +8,8 @@ import {
   Delete,
   UseGuards,
   Query,
+  Req,
+  ForbiddenException,
   ParseUUIDPipe, // <-- Import ParseUUIDPipe
 } from '@nestjs/common';
 import { UsersService } from './users.service';
@@ -27,6 +29,14 @@ import { Roles } from '../auth/roles.decorator';
 import { UserRole } from './entities/user.entity';
 import { OperationsGateway } from '../operations/operations.gateway';
 import { randomUUID } from 'crypto';
+
+type AuthedRequest = { user: { id: string; role: UserRole } };
+
+/** Volunteers may read only their own profile and history; admins may read anyone's. */
+export function assertSelfOrAdmin(req: AuthedRequest, id: string): void {
+  if (req.user?.role === UserRole.ADMIN || req.user?.id === id) return;
+  throw new ForbiddenException('You can only access your own profile');
+}
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -73,23 +83,36 @@ export class UsersController {
     status: 200,
     description: 'The volunteer has been successfully retrieved.',
   })
+  @ApiResponse({
+    status: 403,
+    description: 'Not your profile and not an admin.',
+  })
   @ApiResponse({ status: 404, description: 'Volunteer not found.' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    // <-- Use ParseUUIDPipe
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthedRequest) {
+    assertSelfOrAdmin(req, id);
     return this.usersService.findOne(id);
   }
 
-  // --- NEW ENDPOINT FOR MISSION HISTORY ---
   @Get(':id/tasks')
   @ApiOperation({ summary: "Get a volunteer's mission history" })
   @ApiResponse({ status: 200, description: 'List of assigned tasks.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Not your profile and not an admin.',
+  })
   @ApiResponse({ status: 404, description: 'User not found.' })
-  findTasksForUser(@Param('id', ParseUUIDPipe) id: string) {
+  findTasksForUser(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: AuthedRequest,
+  ) {
+    assertSelfOrAdmin(req, id);
     return this.usersService.findTasksForUser(id);
   }
-  // -----------------------------------------
 
+  // Role, status and other volunteers' records are managed by admins only:
+  // a volunteer must not be able to promote themselves or edit/delete others.
   @Patch(':id')
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Update a volunteer by ID' })
   @ApiResponse({
     status: 200,
@@ -104,6 +127,7 @@ export class UsersController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Delete a volunteer by ID' })
   @ApiResponse({
     status: 200,

@@ -6,6 +6,8 @@
 
 A full-stack web application for coordinating humanitarian aid missions — managing volunteers, resources, and field operations in real time. My Bachelor's thesis at Lviv Polytechnic.
 
+> **About the git history.** I built Aegis in May–June 2026 as my Bachelor's thesis. The code was imported here in a single commit (22 May 2026) from my university GitHub account (POlter2005), so the history starts at that import. The commits from November 2026 are later work: security hardening, CI, docs and the map fallback.
+
 <img src=".github/map.png" alt="Global Operations Map: 100 volunteers, 40 resources and 150 missions from the demo seed on a live map, with the movement simulation panel" width="100%">
 
 ---
@@ -52,10 +54,10 @@ All three services are containerised and orchestrated with Docker Compose. CI bu
 - **Volunteer management** — profile management, skill/experience tracking, availability status
 - **Resource management** — vehicles, generators, drones, medical kits with condition and status tracking
 - **Live operations map** — real-time volunteer location updates over WebSockets (Socket.IO), threat zone overlays, route planning via OpenRouteService
-- **Mission wizard** — step-by-step mission creation with geocoding, map-based destination picking, and AI task suggestions
+- **Mission wizard** — step-by-step mission creation with geocoding, map-based destination picking, and rule-based volunteer suggestions (scored by skills and region)
 - **Analytics dashboard** — mission statistics, volunteer performance, resource utilisation charts
 - **Notifications** — real-time in-app notification centre
-- **Authentication** — JWT-based auth with role-based access (admin / volunteer)
+- **Authentication** — JWT-based auth with role-based access (admin / volunteer): only admins create, edit or delete volunteers and change roles; volunteers can read only their own profile and history; the signing key comes from the environment and the app refuses to start without one
 
 <img src=".github/live.gif" alt="Movement simulation: a volunteer's position streams over Socket.IO along the mission route until the 'Mission complete' notification" width="100%">
 
@@ -72,6 +74,13 @@ All three services are containerised and orchestrated with Docker Compose. CI bu
 
 ### Run with Docker
 
+Put two values in a `.env` file next to `docker-compose.yml` (it is git-ignored):
+
+```bash
+JWT_SECRET=$(openssl rand -hex 32)
+OPENROUTESERVICE_API_KEY=<your key from openrouteservice.org>
+```
+
 ```bash
 docker compose up --build
 ```
@@ -84,7 +93,7 @@ docker compose up --build
 
 ### Seed the database
 
-After the backend is running, trigger the seed endpoint once to populate demo data (100 volunteers, 40 resources, 150 missions):
+After the backend is running, trigger the seed endpoint once to populate demo data (100 volunteers, 40 resources, 150 missions). The endpoint exists only when `ENABLE_SEED=true` (set in `docker-compose.yml` for local demos) and never with `NODE_ENV=production`, because it creates accounts with known passwords:
 
 ```bash
 curl -X POST http://localhost:3000/seed
@@ -115,7 +124,7 @@ Demo accounts created by the seed:
 │       ├── tasks/          # Mission management
 │       ├── resources/      # Resource inventory
 │       ├── routing/        # OpenRouteService integration
-│       ├── suggestions/    # AI task suggestions
+│       ├── suggestions/    # Rule-based volunteer suggestions
 │       ├── threat-zones/   # Danger zone overlays
 │       ├── operations/     # Live operations & WebSocket gateway
 │       ├── analytics/      # Dashboard statistics
@@ -168,7 +177,8 @@ NEXT_PUBLIC_API_URL=http://localhost:3000 npm run dev
 | `DB_USERNAME` | Database user |
 | `DB_PASSWORD` | Database password |
 | `DB_DATABASE` | Database name |
-| `JWT_SECRET` | Secret key for JWT signing |
+| `JWT_SECRET` | Required. JWT signing key, at least 32 random characters (`openssl rand -hex 32`) |
+| `ENABLE_SEED` | `true` only for local demos: enables `POST /seed` |
 | `FRONTEND_URL` | Frontend origin for CORS |
 | `OPENROUTESERVICE_API_KEY` | API key for route calculation |
 
