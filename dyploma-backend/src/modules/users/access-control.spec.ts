@@ -6,7 +6,8 @@ import { ROLES_KEY } from '../auth/roles.decorator';
 import { requireJwtSecret } from '../auth/auth.constants';
 import { seedEnabled } from '../seed/seed.controller';
 import { User, UserRole } from './entities/user.entity';
-import { UsersController, assertSelfOrAdmin } from './users.controller';
+import { UsersController } from './users.controller';
+import { assertSelfOrAdmin, assertTaskAccess } from '../auth/access';
 
 const volunteer = { user: { id: 'vol-1', role: UserRole.VOLUNTEER } };
 const admin = { user: { id: 'adm-1', role: UserRole.ADMIN } };
@@ -49,6 +50,30 @@ describe('users access control', () => {
       guard.canActivate(ctx({ role: 'not-admin-but-contains-admin' })),
     ).toBe(false);
     expect(guard.canActivate(ctx(undefined))).toBe(false);
+  });
+});
+
+describe('mission access', () => {
+  const task = { creatorId: 'creator-1', assignee: { id: 'vol-1' } };
+  const as = (id: string, role = UserRole.VOLUNTEER) => ({
+    user: { id, role },
+  });
+
+  it('creator and admin may edit; the assignee may not', () => {
+    const edit = { allowAssignee: false };
+    expect(() => assertTaskAccess(as('creator-1'), task, edit)).not.toThrow();
+    expect(() => assertTaskAccess(admin, task, edit)).not.toThrow();
+    expect(() => assertTaskAccess(as('vol-1'), task, edit)).toThrow(
+      ForbiddenException,
+    );
+  });
+
+  it('the assignee may read chat and add logs; outsiders may not', () => {
+    const read = { allowAssignee: true };
+    expect(() => assertTaskAccess(as('vol-1'), task, read)).not.toThrow();
+    expect(() => assertTaskAccess(as('vol-2'), task, read)).toThrow(
+      ForbiddenException,
+    );
   });
 });
 

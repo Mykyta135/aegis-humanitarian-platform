@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -18,6 +19,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthedRequest, assertTaskAccess } from '../auth/access';
 import { ChatService } from '../chat/chat.service';
 import { OperationsGateway } from '../operations/operations.gateway';
 import { RoutingService } from '../routing/routing.service';
@@ -78,20 +80,27 @@ export class TasksController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update task fields (assignee, locations, skills, etc.)' })
+  @ApiOperation({
+    summary:
+      'Update task fields (assignee, locations, skills, etc.) — creator or admin',
+  })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateTaskDto: UpdateTaskDto,
+    @Req() req: AuthedRequest,
   ) {
+    assertTaskAccess(req, await this.tasksService.findOne(id), {
+      allowAssignee: false,
+    });
     return this.tasksService.update(id, updateTaskDto);
   }
 
   @Patch(':id/arrive')
-  @ApiOperation({ summary: 'Mark arrival at start point — logs the event, mission stays pending until volunteer starts it' })
-  async arriveAtStart(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: any,
-  ) {
+  @ApiOperation({
+    summary:
+      'Mark arrival at start point — logs the event, mission stays pending until volunteer starts it',
+  })
+  async arriveAtStart(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     const actorId: string = req.user?.id;
     const task = await this.tasksService.arriveAtStart(id, actorId);
     this.gateway.sendNotification({
@@ -107,11 +116,10 @@ export class TasksController {
   }
 
   @Patch(':id/start')
-  @ApiOperation({ summary: 'Start a mission — only the assigned volunteer may do this' })
-  async startMission(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: any,
-  ) {
+  @ApiOperation({
+    summary: 'Start a mission — only the assigned volunteer may do this',
+  })
+  async startMission(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     const actorId: string = req.user?.id;
     const task = await this.tasksService.startMission(id, actorId);
     this.gateway.sendNotification({
@@ -127,19 +135,30 @@ export class TasksController {
   }
 
   @Patch(':id/status')
-  @ApiOperation({ summary: 'Update mission status — assignee completes, creator or assignee cancels' })
+  @ApiOperation({
+    summary:
+      'Update mission status — assignee completes, creator or assignee cancels',
+  })
   async updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateTaskStatusDto: UpdateTaskStatusDto,
     @Req() req: any,
   ) {
     const actorId: string = req.user?.id;
-    const task = await this.tasksService.updateStatus(id, updateTaskStatusDto, actorId);
-    const type = updateTaskStatusDto.status === 'completed' ? 'task_completed' : 'task_cancelled';
+    const task = await this.tasksService.updateStatus(
+      id,
+      updateTaskStatusDto,
+      actorId,
+    );
+    const type =
+      updateTaskStatusDto.status === 'completed'
+        ? 'task_completed'
+        : 'task_cancelled';
     this.gateway.sendNotification({
       id: randomUUID(),
       type,
-      title: type === 'task_completed' ? 'Mission Completed' : 'Mission Cancelled',
+      title:
+        type === 'task_completed' ? 'Mission Completed' : 'Mission Cancelled',
       message: `"${task.title}" — ${task.assignee?.name ?? 'unknown'}`,
       severity: type === 'task_completed' ? 'success' : 'warning',
       timestamp: new Date().toISOString(),
@@ -159,18 +178,27 @@ export class TasksController {
   }
 
   @Get(':id/route-alternatives')
-  @ApiOperation({ summary: 'Get multiple route alternatives scored against threat zones' })
+  @ApiOperation({
+    summary: 'Get multiple route alternatives scored against threat zones',
+  })
   async getRouteAlternatives(@Param('id', ParseUUIDPipe) id: string) {
     const task = await this.tasksService.findOne(id);
     if (!task.startLocation || !task.endLocation) {
       throw new NotFoundException('Task does not have start or end locations.');
     }
     const threatZones = await this.threatZonesService.getThreatZones();
-    return this.routingService.getRouteAlternatives(task.startLocation, task.endLocation, threatZones);
+    return this.routingService.getRouteAlternatives(
+      task.startLocation,
+      task.endLocation,
+      threatZones,
+    );
   }
 
   @Get(':id/route-conditioned')
-  @ApiOperation({ summary: 'Get a route adjusted for field conditions (weather, load, threat zones, night, unpaved)' })
+  @ApiOperation({
+    summary:
+      'Get a route adjusted for field conditions (weather, load, threat zones, night, unpaved)',
+  })
   async getConditionedRoute(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('avoidThreatZones') avoidThreatZones?: string,
@@ -186,18 +214,24 @@ export class TasksController {
 
     const conditions = {
       avoidThreatZones: avoidThreatZones !== 'false',
-      weatherSeverity: (['none', 'light', 'heavy'].includes(weatherSeverity ?? '') ? weatherSeverity : 'none') as 'none' | 'light' | 'heavy',
+      weatherSeverity: (['none', 'light', 'heavy'].includes(
+        weatherSeverity ?? '',
+      )
+        ? weatherSeverity
+        : 'none') as 'none' | 'light' | 'heavy',
       avoidUnpaved: avoidUnpaved === 'true',
       nightMode: nightMode === 'true',
-      vehicleLoad: (['light', 'standard', 'heavy'].includes(vehicleLoad ?? '') ? vehicleLoad : 'standard') as 'light' | 'standard' | 'heavy',
+      vehicleLoad: (['light', 'standard', 'heavy'].includes(vehicleLoad ?? '')
+        ? vehicleLoad
+        : 'standard') as 'light' | 'standard' | 'heavy',
     };
 
     let threatPolygons: number[][][][] | undefined;
     if (conditions.avoidThreatZones) {
       const zones = await this.threatZonesService.getThreatZones();
       threatPolygons = zones
-        .filter(z => z.geometry.type === 'Polygon')
-        .map(z => z.geometry.coordinates as number[][][]);
+        .filter((z) => z.geometry.type === 'Polygon')
+        .map((z) => z.geometry.coordinates as number[][][]);
     }
 
     return this.routingService.getConditionedRoute(
@@ -209,16 +243,34 @@ export class TasksController {
   }
 
   @Get(':id/messages')
-  getMessagesForTask(@Param('id', ParseUUIDPipe) id: string) {
+  async getMessagesForTask(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: AuthedRequest,
+  ) {
+    assertTaskAccess(req, await this.tasksService.findOne(id), {
+      allowAssignee: true,
+    });
     return this.chatService.findMessagesForTask(id);
   }
 
+  /** The author is the signed-in user, not a name sent by the client. */
   @Post(':id/logs')
-  @ApiOperation({ summary: 'Append a log entry to a task' })
-  addLog(
+  @ApiOperation({
+    summary: 'Append a log entry to a task — creator, assignee or admin',
+  })
+  async addLog(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { message: string; author?: string },
+    @Body() body: { message: string },
+    @Req() req: AuthedRequest & { user: { name?: string } },
   ) {
-    return this.tasksService.addLog(id, body.message, body.author);
+    assertTaskAccess(req, await this.tasksService.findOne(id), {
+      allowAssignee: true,
+    });
+    const message =
+      typeof body?.message === 'string' ? body.message.trim() : '';
+    if (!message || message.length > 2000) {
+      throw new BadRequestException('message must be 1–2000 characters');
+    }
+    return this.tasksService.addLog(id, message, req.user.name ?? req.user.id);
   }
 }

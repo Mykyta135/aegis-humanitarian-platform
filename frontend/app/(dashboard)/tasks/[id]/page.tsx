@@ -33,7 +33,7 @@ import { useSendVolunteerRequest } from "@/hooks/use-volunteer-requests";
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { io } from "socket.io-client";
+import { connectSocket } from "@/lib/socket";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -240,7 +240,7 @@ export default function TaskDetailPage() {
   // ── Real-time updates via WebSocket ──────────────────────────────────────
   useEffect(() => {
     if (!id) return;
-    const socket = io(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000", { transports: ["websocket"] });
+    const socket = connectSocket({ transports: ["websocket"] });
 
     const invalidateAll = () => {
       queryClient.invalidateQueries({ queryKey: ["task", id] });

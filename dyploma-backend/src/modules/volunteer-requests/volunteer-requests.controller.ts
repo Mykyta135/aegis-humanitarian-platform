@@ -1,8 +1,17 @@
 import {
-  Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Req, UseGuards,
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthedRequest, assertSelfOrAdmin } from '../auth/access';
 import { VolunteerRequestsService } from './volunteer-requests.service';
 
 @ApiBearerAuth()
@@ -12,10 +21,19 @@ import { VolunteerRequestsService } from './volunteer-requests.service';
 export class VolunteerRequestsController {
   constructor(private readonly svc: VolunteerRequestsService) {}
 
+  /** The requester is the signed-in user; a `requesterId` in the body is ignored. */
   @Post()
   @ApiOperation({ summary: 'Send a volunteer request for a task' })
-  create(@Body() body: { taskId: string; requesterId: string; targetId: string; message?: string }) {
-    return this.svc.create(body.taskId, body.requesterId, body.targetId, body.message);
+  create(
+    @Body() body: { taskId: string; targetId: string; message?: string },
+    @Req() req: AuthedRequest,
+  ) {
+    return this.svc.create(
+      body.taskId,
+      req.user.id,
+      body.targetId,
+      body.message,
+    );
   }
 
   @Get('task/:taskId')
@@ -26,7 +44,11 @@ export class VolunteerRequestsController {
 
   @Get('user/:userId')
   @ApiOperation({ summary: 'List pending requests sent to a volunteer' })
-  forUser(@Param('userId', ParseUUIDPipe) userId: string) {
+  forUser(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Req() req: AuthedRequest,
+  ) {
+    assertSelfOrAdmin(req, userId);
     return this.svc.findForUser(userId);
   }
 
@@ -35,7 +57,7 @@ export class VolunteerRequestsController {
   respond(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { accept: boolean },
-    @Req() req: any,
+    @Req() req: AuthedRequest,
   ) {
     return this.svc.respond(id, req.user.id, body.accept);
   }

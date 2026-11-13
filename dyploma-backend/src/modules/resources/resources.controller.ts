@@ -15,13 +15,17 @@ import { CreateResourceDto } from './dto/create-resource.dto';
 import { UpdateResourceDto } from './dto/update-resource.dto';
 import { ResourceFilterDto, ResourcesService } from './resources.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
 import { OperationsGateway } from '../operations/operations.gateway';
 import { randomUUID } from 'crypto';
 
+// Everyone signed in can see the inventory; only admins change it.
 @ApiBearerAuth()
 @ApiTags('Resources')
 @Controller('resources')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class ResourcesController {
   constructor(
     private readonly resourcesService: ResourcesService,
@@ -29,6 +33,7 @@ export class ResourcesController {
   ) {}
 
   @Post()
+  @Roles(UserRole.ADMIN)
   @ApiResponse({
     status: 201,
     description: 'The resource has been successfully created.',
@@ -67,6 +72,7 @@ export class ResourcesController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.ADMIN)
   @ApiResponse({ status: 200, description: 'Resource updated successfully.' })
   @ApiResponse({ status: 404, description: 'Resource not found.' })
   update(
@@ -77,6 +83,7 @@ export class ResourcesController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.ADMIN)
   @ApiResponse({ status: 200, description: 'Resource deleted successfully.' })
   @ApiResponse({ status: 404, description: 'Resource not found.' })
   remove(@Param('id', ParseUUIDPipe) id: string) {

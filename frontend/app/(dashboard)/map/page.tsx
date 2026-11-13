@@ -15,7 +15,8 @@ import { useMissionWizardStore } from "@/stores/use-mission-wizard.store";
 import "leaflet-draw/dist/leaflet.draw.css";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
-import { io } from "socket.io-client";
+import { connectSocket } from "@/lib/socket";
+import { useAuthStore } from "@/stores/use-auth.store";
 import { toast } from "sonner";
 import L from "leaflet";
 import { useQueryClient } from "@tanstack/react-query";
@@ -30,6 +31,7 @@ const DynamicOperationsMap = dynamic(
 
 export default function MapPage() {
   const { filters } = useFilterStore();
+  const isAdmin = useAuthStore((s) => s.user?.role === "admin");
   const { data: tasks, isLoading: l1, isError: e1 } = useTasks({});
   const { data: volunteers, isLoading: l2, isError: e2 } = useVolunteers(filters.volunteers);
   const { data: resources, isLoading: l3, isError: e3 } = useResources(filters.resources);
@@ -54,7 +56,7 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => {
-    const socket = io(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000");
+    const socket = connectSocket();
     const onConnect = () => setIsConnected(true);
     const onDisconnect = () => setIsConnected(false);
     const onLocationUpdate = (v: LiveLocation) =>
@@ -133,7 +135,7 @@ export default function MapPage() {
               Error loading some data
             </div>
           )}
-          <SimulationPanel tasks={tasks ?? []} />
+          {isAdmin && <SimulationPanel tasks={tasks ?? []} />}
           <DynamicOperationsMap
             tasks={tasks ?? []}
             volunteers={volunteers ?? []}

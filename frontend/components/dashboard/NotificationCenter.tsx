@@ -29,7 +29,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { io } from "socket.io-client";
+import { connectSocket } from "@/lib/socket";
 
 const SEVERITY_ICON: Record<string, React.ElementType> = {
   info: Info,
@@ -134,7 +134,7 @@ export function NotificationCenter() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const socket = io(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000");
+    const socket = connectSocket();
     const handleNotification = (payload: Omit<Notification, "read">) => {
       addNotification(payload);
     };

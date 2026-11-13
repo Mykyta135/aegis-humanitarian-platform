@@ -1,45 +1,53 @@
-import { Body, Controller, Logger, Param, Post } from '@nestjs/common'; // Import Logger
-import { ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { IsNumber, Max, Min } from 'class-validator';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthedRequest, assertSelfOrAdmin } from '../auth/access';
 import { OperationsService } from './operations.service';
-
-// It's good practice to use class-validator for DTOs
-import { IsNumber } from 'class-validator';
 
 class LocationUpdateDto {
   @IsNumber()
+  @Min(-90)
+  @Max(90)
   lat: number;
 
   @IsNumber()
+  @Min(-180)
+  @Max(180)
   lng: number;
 }
 
 @ApiTags('Operations (Live)')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('operations')
 export class OperationsController {
-  private readonly logger = new Logger(OperationsController.name); // Add logger for debugging
-
   constructor(private readonly operationsService: OperationsService) {}
 
+  /**
+   * A volunteer reports their own position; an admin may report anyone's.
+   * Coordinates are personal data, so they are not logged.
+   */
   @Post('location/:userId')
   updateLocation(
-    @Param('userId') userId: string,
-    @Body() locationUpdateDto: LocationUpdateDto, // NestJS will validate this DTO
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() locationUpdateDto: LocationUpdateDto,
+    @Req() req: AuthedRequest,
   ) {
-    // --- THIS IS THE FIX ---
-    this.logger.log(`Received location update for userId: ${userId}`);
-    this.logger.debug(
-      `Request Body (DTO): ${JSON.stringify(locationUpdateDto)}`,
-    );
-
-    // The locationUpdateDto object itself contains lat and lng.
-    // We were not passing them correctly to the service.
+    assertSelfOrAdmin(req, userId);
     this.operationsService.handleLocationUpdate(
       userId,
-      locationUpdateDto.lat, // Pass the 'lat' property
-      locationUpdateDto.lng, // Pass the 'lng' property
+      locationUpdateDto.lat,
+      locationUpdateDto.lng,
     );
-    // -----------------------
-
     return { message: 'Location update received and broadcasted' };
   }
 }

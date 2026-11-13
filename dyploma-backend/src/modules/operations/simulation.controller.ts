@@ -12,6 +12,9 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsNumber, IsOptional, Max, Min } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
 import { SimulationService } from './simulation.service';
 
 // The global ValidationPipe runs with whitelist: true, so every field needs a
@@ -42,9 +45,11 @@ export class SeekDto {
   percent: number;
 }
 
+// The demo simulation moves volunteers on everyone's map, so only admins drive it.
 @ApiTags('Simulation')
 @Controller('simulation')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
 export class SimulationController {
   constructor(private readonly simulationService: SimulationService) {}
 

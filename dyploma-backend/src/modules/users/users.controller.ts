@@ -9,7 +9,6 @@ import {
   UseGuards,
   Query,
   Req,
-  ForbiddenException,
   ParseUUIDPipe, // <-- Import ParseUUIDPipe
 } from '@nestjs/common';
 import { UsersService } from './users.service';
@@ -29,14 +28,7 @@ import { Roles } from '../auth/roles.decorator';
 import { UserRole } from './entities/user.entity';
 import { OperationsGateway } from '../operations/operations.gateway';
 import { randomUUID } from 'crypto';
-
-type AuthedRequest = { user: { id: string; role: UserRole } };
-
-/** Volunteers may read only their own profile and history; admins may read anyone's. */
-export function assertSelfOrAdmin(req: AuthedRequest, id: string): void {
-  if (req.user?.role === UserRole.ADMIN || req.user?.id === id) return;
-  throw new ForbiddenException('You can only access your own profile');
-}
+import { AuthedRequest, assertSelfOrAdmin } from '../auth/access';
 
 @ApiTags('Users')
 @ApiBearerAuth()
